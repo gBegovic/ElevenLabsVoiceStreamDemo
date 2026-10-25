@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
                 lowLatency = intent.getBooleanExtra(BenchConfig.EXTRA_LOW_LATENCY, false),
                 tokenDelayMs = intent.getIntExtra(BenchConfig.EXTRA_TOKEN_DELAY_MS, BenchConfig.DEFAULT_TOKEN_DELAY_MS),
                 runs = intent.getIntExtra(BenchConfig.EXTRA_RUNS, BenchConfig.DEFAULT_RUNS),
+                chunkSchedule = intent.getIntArrayExtra(BenchConfig.EXTRA_CHUNK_SCHEDULE),
             )
         } catch (e: IllegalArgumentException) {
             Log.e(BenchConfig.LOG_TAG, "aborted: ${e.message}")

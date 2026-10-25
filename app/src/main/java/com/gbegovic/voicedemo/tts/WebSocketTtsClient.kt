@@ -10,6 +10,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONArray
 import org.json.JSONObject
 
 sealed interface TtsEvent {
@@ -25,7 +26,7 @@ sealed interface TtsEvent {
  * full answer exists.
  *
  * Protocol (per ElevenLabs docs):
- *  1. initial message: {"text": " ", "voice_settings": {...}}
+ *  1. initial message: {"text": " ", "voice_settings": {...}, "generation_config": {...}}
  *  2. text chunks:     {"text": "Hello "}
  *  3. close:           {"text": ""}  -> forces generation of anything buffered
  * Server sends {"audio": "<base64>", "isFinal": bool, "alignment": {...}}.
@@ -34,7 +35,16 @@ class WebSocketTtsClient(
     private val okHttpClient: OkHttpClient,
     private val apiKey: String,
 ) {
-    fun stream(voiceId: String, modelId: String, textChunks: Flow<String>): Flow<TtsEvent> = callbackFlow {
+    /**
+     * [chunkLengthSchedule]: characters the server buffers before each generation, sent as
+     * generation_config.chunk_length_schedule. Null keeps the server default.
+     */
+    fun stream(
+        voiceId: String,
+        modelId: String,
+        textChunks: Flow<String>,
+        chunkLengthSchedule: List<Int>? = null,
+    ): Flow<TtsEvent> = callbackFlow {
         val request = Request.Builder()
             .url(ElevenLabsConfig.wsStreamInputUrl(voiceId, modelId))
             .header(ElevenLabsConfig.HEADER_API_KEY, apiKey)
@@ -90,6 +100,14 @@ class WebSocketTtsClient(
                     "voice_settings",
                     JSONObject().put("stability", 0.5).put("similarity_boost", 0.8),
                 )
+                .apply {
+                    if (chunkLengthSchedule != null) {
+                        put(
+                            "generation_config",
+                            JSONObject().put("chunk_length_schedule", JSONArray(chunkLengthSchedule)),
+                        )
+                    }
+                }
                 .toString()
         )
 
