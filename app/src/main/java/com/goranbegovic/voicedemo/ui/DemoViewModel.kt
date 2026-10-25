@@ -35,6 +35,14 @@ data class RunResult(
     val chars: Int,
 )
 
+private val SAMPLE_TEXT =
+    """
+        Streaming changes how speech feels in an app. Instead of waiting for a whole
+        file, the first words start playing while the rest is still being generated.
+        This demo compares two paths: a progressive MP3 stream through Media3, and raw
+        PCM over a WebSocket fed word by word, the way an LLM would produce an answer.
+    """.trimIndent().replace('\n', ' ')
+
 data class DemoUiState(
     val text: String = SAMPLE_TEXT,
     val voiceId: String = BuildConfig.ELEVENLABS_VOICE_ID,
@@ -85,7 +93,14 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     fun speak() {
         val s = _state.value
         if (s.isRunning || s.text.isBlank() || !s.hasApiKey) return
-        _state.update { it.copy(isRunning = true, firstByteMs = null, firstAudioMs = null, log = emptyList()) }
+        _state.update {
+            it.copy(
+                isRunning = true,
+                firstByteMs = null,
+                firstAudioMs = null,
+                log = emptyList(),
+            )
+        }
         val variant = if (s.mode == StreamMode.Http) {
             if (s.lowLatencyBuffer) " · 250 ms buffer" else " · default buffer"
         } else ""
@@ -106,20 +121,25 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     // --- HTTP streaming into ExoPlayer --------------------------------------------------
 
     private fun speakHttp(s: DemoUiState) {
-        httpPlayer.speak(s.text, s.voiceId, s.modelId, object : HttpStreamingPlayer.Callback {
-            override fun onFirstByte(elapsedMs: Long) {
-                _state.update { it.copy(firstByteMs = elapsedMs) }
-                log("first byte after $elapsedMs ms")
-            }
+        httpPlayer.speak(
+            text = s.text,
+            voiceId = s.voiceId,
+            modelId = s.modelId,
+            callback = object : HttpStreamingPlayer.Callback {
+                override fun onFirstByte(elapsedMs: Long) {
+                    _state.update { it.copy(firstByteMs = elapsedMs) }
+                    log("first byte after $elapsedMs ms")
+                }
 
-            override fun onPlaybackStarted(elapsedMs: Long) {
-                _state.update { it.copy(firstAudioMs = elapsedMs) }
-                log("ExoPlayer playing after $elapsedMs ms")
-            }
+                override fun onPlaybackStarted(elapsedMs: Long) {
+                    _state.update { it.copy(firstAudioMs = elapsedMs) }
+                    log("ExoPlayer playing after $elapsedMs ms")
+                }
 
-            override fun onCompleted() = finishRun("✓ playback complete")
-            override fun onError(message: String) = finishRun("✗ $message")
-        })
+                override fun onCompleted() = finishRun("✓ playback complete")
+                override fun onError(message: String) = finishRun("✗ $message")
+            },
+        )
     }
 
     // --- WebSocket with simulated LLM token stream into AudioTrack ----------------------
@@ -155,6 +175,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         player.enqueue(event.pcm)
                     }
+
                     TtsEvent.Final -> log("server sent isFinal after $elapsed ms")
                     is TtsEvent.Error -> {
                         log("✗ ${event.message}")
@@ -178,7 +199,8 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                 StreamMode.Http -> if (s.lowLatencyBuffer) "250 ms buffer" else "default buffer"
                 StreamMode.WebSocket -> "${s.tokenDelayMs} ms/word"
             }
-            val result = RunResult(s.mode, variant, s.modelId, s.firstByteMs, s.firstAudioMs, s.text.length)
+            val result =
+                RunResult(s.mode, variant, s.modelId, s.firstByteMs, s.firstAudioMs, s.text.length)
             s.copy(isRunning = false, history = (listOf(result) + s.history).take(10))
         }
     }
@@ -200,11 +222,5 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         /** Words with their trailing whitespace, so chunks concatenate back to the original. */
         val WORD_SPLIT = Regex("""\S+\s*""")
-
-        const val SAMPLE_TEXT =
-            "Streaming changes how speech feels in an app. Instead of waiting for a whole " +
-                "file, the first words start playing while the rest is still being generated. " +
-                "This demo compares two paths: a progressive MP3 stream through Media3, and raw " +
-                "PCM over a WebSocket fed word by word, the way an LLM would produce an answer."
     }
 }
