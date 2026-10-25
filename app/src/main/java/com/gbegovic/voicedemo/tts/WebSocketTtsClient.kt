@@ -1,4 +1,4 @@
-package com.goranbegovic.voicedemo.tts
+package com.gbegovic.voicedemo.tts
 
 import android.util.Base64
 import kotlinx.coroutines.channels.awaitClose

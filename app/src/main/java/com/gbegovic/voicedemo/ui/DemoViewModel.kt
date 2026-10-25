@@ -1,20 +1,24 @@
-package com.goranbegovic.voicedemo.ui
+package com.gbegovic.voicedemo.ui
 
 import android.app.Application
 import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.goranbegovic.voicedemo.BuildConfig
-import com.goranbegovic.voicedemo.audio.PcmStreamPlayer
-import com.goranbegovic.voicedemo.tts.ElevenLabsConfig
-import com.goranbegovic.voicedemo.tts.HttpStreamingPlayer
-import com.goranbegovic.voicedemo.tts.TtsEvent
-import com.goranbegovic.voicedemo.tts.WebSocketTtsClient
+import com.gbegovic.voicedemo.BuildConfig
+import com.gbegovic.voicedemo.audio.PcmStreamPlayer
+import com.gbegovic.voicedemo.bench.BenchConfig
+import com.gbegovic.voicedemo.bench.BenchCsv
+import com.gbegovic.voicedemo.tts.ElevenLabsConfig
+import com.gbegovic.voicedemo.tts.HttpStreamingPlayer
+import com.gbegovic.voicedemo.tts.TtsEvent
+import com.gbegovic.voicedemo.tts.WebSocketTtsClient
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,7 +37,14 @@ data class RunResult(
     val firstByteMs: Long?,
     val firstAudioMs: Long?,
     val chars: Int,
+    /** Finished normally and produced audio; false for errors, stops and silent runs. */
+    val success: Boolean,
 )
+
+/** Fixed benchmark input: short to save character quota, identical across all setups. */
+internal const val BENCH_TEXT =
+    "Streaming speech lets the first words play while the rest is still being generated, " +
+        "so a spoken answer can start almost as soon as it exists."
 
 private val SAMPLE_TEXT =
     """
@@ -75,6 +86,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
 
     private var wsJob: Job? = null
     private var pcmPlayer: PcmStreamPlayer? = null
+    private var batchJob: Job? = null
 
     fun onTextChange(value: String) = _state.update { it.copy(text = value) }
     fun onVoiceIdChange(value: String) = _state.update { it.copy(voiceId = value.trim()) }
@@ -112,10 +124,44 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stop() {
+        batchJob?.cancel()
         httpPlayer.stop()
         wsJob?.cancel()
         releasePcm()
-        if (_state.value.isRunning) finishRun("■ stopped")
+        if (_state.value.isRunning) finishRun("■ stopped", success = false)
+    }
+
+    // --- benchmark batch (started from adb, see BenchConfig) ----------------------------
+
+    /**
+     * Runs [BenchConfig.runs] sequential runs of [BENCH_TEXT]. Each run starts only after the
+     * previous one has finished playing, plus [RUN_GAP_MS]. The batch stops at the first failed
+     * run (e.g. 401 or quota exceeded) instead of retrying and burning characters.
+     */
+    fun runBatch(config: BenchConfig) {
+        if (batchJob?.isActive == true || _state.value.isRunning) return
+        batchJob = viewModelScope.launch {
+            onModeChange(config.mode)
+            onTokenDelayChange(config.tokenDelayMs)
+            onLowLatencyBufferChange(config.lowLatencyBuffer)
+            onTextChange(BENCH_TEXT)
+            Log.i(BenchConfig.LOG_TAG, "start $config")
+
+            for (run in 1..config.runs) {
+                speak()
+                if (!_state.value.isRunning) {
+                    Log.w(BenchConfig.LOG_TAG, "aborted: run $run could not start (API key missing?)")
+                    return@launch
+                }
+                val finished = state.first { !it.isRunning }
+                if (finished.history.firstOrNull()?.success != true) {
+                    Log.w(BenchConfig.LOG_TAG, "aborted: run $run failed: ${finished.log.lastOrNull()}")
+                    return@launch
+                }
+                if (run < config.runs) delay(RUN_GAP_MS)
+            }
+            Log.i(BenchConfig.LOG_TAG, "done")
+        }
     }
 
     // --- HTTP streaming into ExoPlayer --------------------------------------------------
@@ -136,8 +182,8 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                     log("ExoPlayer playing after $elapsedMs ms")
                 }
 
-                override fun onCompleted() = finishRun("✓ playback complete")
-                override fun onError(message: String) = finishRun("✗ $message")
+                override fun onCompleted() = finishRun("✓ playback complete", success = true)
+                override fun onError(message: String) = finishRun("✗ $message", success = false)
             },
         )
     }
@@ -145,6 +191,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     // --- WebSocket with simulated LLM token stream into AudioTrack ----------------------
 
     private fun speakWebSocket(s: DemoUiState) {
+        releasePcm() // the previous run's AudioTrack stays open after it drains; free it first
         val player = PcmStreamPlayer(ElevenLabsConfig.PCM_SAMPLE_RATE).also { pcmPlayer = it }
         val startMs = SystemClock.elapsedRealtime()
         var firstAudioSeen = false
@@ -158,7 +205,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         player.start(viewModelScope) {
-            viewModelScope.launch { finishRun("✓ playback complete") }
+            viewModelScope.launch { finishRun("✓ playback complete", success = true) }
         }
 
         wsJob = viewModelScope.launch {
@@ -180,7 +227,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
                     is TtsEvent.Error -> {
                         log("✗ ${event.message}")
                         releasePcm()
-                        finishRun(null)
+                        finishRun(null, success = false)
                     }
                 }
             }
@@ -191,18 +238,23 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- helpers ------------------------------------------------------------------------
 
-    private fun finishRun(message: String?) {
+    private fun finishRun(message: String?, success: Boolean) {
         message?.let(::log)
+        var finished: RunResult? = null
         _state.update { s ->
             if (!s.isRunning) return@update s
             val variant = when (s.mode) {
                 StreamMode.Http -> if (s.lowLatencyBuffer) "250 ms buffer" else "default buffer"
                 StreamMode.WebSocket -> "${s.tokenDelayMs} ms/word"
             }
-            val result =
-                RunResult(s.mode, variant, s.modelId, s.firstByteMs, s.firstAudioMs, s.text.length)
+            val result = RunResult(
+                s.mode, variant, s.modelId, s.firstByteMs, s.firstAudioMs, s.text.length,
+                success = success && s.firstAudioMs != null,
+            ).also { finished = it }
             s.copy(isRunning = false, history = (listOf(result) + s.history).take(10))
         }
+        // Logged outside update(), which may re-run its lambda under contention.
+        finished?.let { Log.i(BenchCsv.TAG, BenchCsv.line(it)) }
     }
 
     private fun releasePcm() {
@@ -213,6 +265,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     private fun log(line: String) = _state.update { it.copy(log = it.log + line) }
 
     override fun onCleared() {
+        batchJob?.cancel()
         wsJob?.cancel()
         releasePcm()
         httpPlayer.release()
@@ -222,5 +275,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         /** Words with their trailing whitespace, so chunks concatenate back to the original. */
         val WORD_SPLIT = Regex("""\S+\s*""")
+
+        const val RUN_GAP_MS = 2_000L
     }
 }

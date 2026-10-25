@@ -13,11 +13,11 @@ val localProps = Properties().apply {
 }
 
 android {
-    namespace = "com.goranbegovic.voicedemo"
+    namespace = "com.gbegovic.voicedemo"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.goranbegovic.voicedemo"
+        applicationId = "com.gbegovic.voicedemo"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -57,4 +57,5 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
 }
