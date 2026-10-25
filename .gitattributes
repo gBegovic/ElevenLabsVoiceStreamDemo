@@ -1,0 +1,4 @@
+# Normalize line endings in the repo regardless of each machine's core.autocrlf.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.jar binary
