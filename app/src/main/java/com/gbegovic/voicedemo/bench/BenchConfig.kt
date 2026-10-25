@@ -6,7 +6,8 @@ import com.gbegovic.voicedemo.ui.StreamMode
  * One benchmark batch, started from adb in debug builds:
  *
  * adb shell am start -S -n com.gbegovic.voicedemo/.MainActivity \
- *     --es mode http|ws --ez lowLatency true|false --ei tokenDelayMs 40 --ei runs 6  *     [--eia chunkSchedule 50,120]   (ws only: generation_config.chunk_length_schedule)
+ *     --es mode http|ws --ez lowLatency true|false --ei tokenDelayMs 40 --ei runs 6 \
+ *     [--eia chunkSchedule 50,120]   (ws only: generation_config.chunk_length_schedule)
  */
 data class BenchConfig(
     val mode: StreamMode,
