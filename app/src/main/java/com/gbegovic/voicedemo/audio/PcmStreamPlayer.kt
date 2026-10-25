@@ -1,4 +1,4 @@
-package com.goranbegovic.voicedemo.audio
+package com.gbegovic.voicedemo.audio
 
 import android.media.AudioAttributes
 import android.media.AudioFormat

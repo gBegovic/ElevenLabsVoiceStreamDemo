@@ -1,0 +1,25 @@
+setup,run,warmup,mode,variant,model,firstByteMs,firstAudioMs,chars,success
+http-default,1,true,http,default buffer,eleven_flash_v2_5,1476,1739,141,true
+http-default,2,false,http,default buffer,eleven_flash_v2_5,283,417,141,true
+http-default,3,false,http,default buffer,eleven_flash_v2_5,448,543,141,true
+http-default,4,false,http,default buffer,eleven_flash_v2_5,190,553,141,true
+http-default,5,false,http,default buffer,eleven_flash_v2_5,351,447,141,true
+http-default,6,false,http,default buffer,eleven_flash_v2_5,412,502,141,true
+http-lowlatency,1,true,http,250 ms buffer,eleven_flash_v2_5,379,612,141,true
+http-lowlatency,2,false,http,250 ms buffer,eleven_flash_v2_5,259,361,141,true
+http-lowlatency,3,false,http,250 ms buffer,eleven_flash_v2_5,358,461,141,true
+http-lowlatency,4,false,http,250 ms buffer,eleven_flash_v2_5,372,472,141,true
+http-lowlatency,5,false,http,250 ms buffer,eleven_flash_v2_5,239,331,141,true
+http-lowlatency,6,false,http,250 ms buffer,eleven_flash_v2_5,429,550,141,true
+ws-0,1,true,ws,0 ms/word,eleven_flash_v2_5,533,533,141,true
+ws-0,2,false,ws,0 ms/word,eleven_flash_v2_5,557,557,141,true
+ws-0,3,false,ws,0 ms/word,eleven_flash_v2_5,533,533,141,true
+ws-0,4,false,ws,0 ms/word,eleven_flash_v2_5,552,552,141,true
+ws-0,5,false,ws,0 ms/word,eleven_flash_v2_5,552,552,141,true
+ws-0,6,false,ws,0 ms/word,eleven_flash_v2_5,589,589,141,true
+ws-40,1,true,ws,40 ms/word,eleven_flash_v2_5,1420,1420,141,true
+ws-40,2,false,ws,40 ms/word,eleven_flash_v2_5,1126,1126,141,true
+ws-40,3,false,ws,40 ms/word,eleven_flash_v2_5,1103,1103,141,true
+ws-40,4,false,ws,40 ms/word,eleven_flash_v2_5,1109,1109,141,true
+ws-40,5,false,ws,40 ms/word,eleven_flash_v2_5,1099,1099,141,true
+ws-40,6,false,ws,40 ms/word,eleven_flash_v2_5,1103,1103,141,true

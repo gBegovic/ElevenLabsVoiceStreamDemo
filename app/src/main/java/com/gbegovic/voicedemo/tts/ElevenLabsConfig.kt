@@ -1,4 +1,4 @@
-package com.goranbegovic.voicedemo.tts
+package com.gbegovic.voicedemo.tts
 
 /**
  * Endpoint and format constants for the ElevenLabs text-to-speech API.
