@@ -23,3 +23,9 @@ ws-40,3,false,ws,40 ms/word,eleven_flash_v2_5,1103,1103,141,true
 ws-40,4,false,ws,40 ms/word,eleven_flash_v2_5,1109,1109,141,true
 ws-40,5,false,ws,40 ms/word,eleven_flash_v2_5,1099,1099,141,true
 ws-40,6,false,ws,40 ms/word,eleven_flash_v2_5,1103,1103,141,true
+ws-40-chunk50,1,true,ws,40 ms/word · schedule [50],eleven_flash_v2_5,872,872,141,true
+ws-40-chunk50,2,false,ws,40 ms/word · schedule [50],eleven_flash_v2_5,585,585,141,true
+ws-40-chunk50,3,false,ws,40 ms/word · schedule [50],eleven_flash_v2_5,542,542,141,true
+ws-40-chunk50,4,false,ws,40 ms/word · schedule [50],eleven_flash_v2_5,532,532,141,true
+ws-40-chunk50,5,false,ws,40 ms/word · schedule [50],eleven_flash_v2_5,543,543,141,true
+ws-40-chunk50,6,false,ws,40 ms/word · schedule [50],eleven_flash_v2_5,519,519,141,true

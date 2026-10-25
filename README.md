@@ -7,6 +7,19 @@ A small Android app (Kotlin, Jetpack Compose, Media3) that streams ElevenLabs te
 | **HTTP + Media3** | POSTs the full text to `/v1/text-to-speech/{voice_id}/stream` and plays the MP3 progressively in ExoPlayer. A `ResolvingDataSource` rewrites ExoPlayer's GET into an authenticated POST. | Long-form reading where the full text is known up front (Reader-style) |
 | **WebSocket + PCM** | Opens `/stream-input`, sends text word by word with a configurable delay to imitate an LLM, and writes the returned 16 kHz PCM straight into an `AudioTrack`. | Conversational agents where the answer is still being generated |
 
+## Results
+
+Time to first audio on a Sony Xperia (Android 14, Wi-Fi), `eleven_flash_v2_5`, the same 141-character text, 5 measured runs per setup after a warm-up:
+
+| Setup | Median (ms) | Min–max (ms) |
+|---|---|---|
+| HTTP + Media3, default buffer | 502 | 417–553 |
+| HTTP + Media3, 250 ms buffer | 461 | 331–550 |
+| WebSocket + PCM, 0 ms/word | 552 | 533–589 |
+| WebSocket + PCM, 40 ms/word | 1103 | 1099–1126 |
+
+The two modes stop the clock at slightly different points, so compare within a mode. Raw runs, how each number is measured, and a follow-up test of the 40 ms/word delay: [bench/SUMMARY.md](bench/SUMMARY.md).
+
 ## Setup
 
 1. Open the folder in Android Studio and let it sync.

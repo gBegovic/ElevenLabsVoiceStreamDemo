@@ -61,6 +61,8 @@ data class DemoUiState(
     val mode: StreamMode = StreamMode.WebSocket,
     val tokenDelayMs: Int = 40,
     val lowLatencyBuffer: Boolean = false,
+    /** WebSocket only; null = server default chunk_length_schedule. Set by benchmark batches. */
+    val chunkLengthSchedule: List<Int>? = null,
     val isRunning: Boolean = false,
     val firstByteMs: Long? = null,
     val firstAudioMs: Long? = null,
@@ -144,6 +146,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
             onModeChange(config.mode)
             onTokenDelayChange(config.tokenDelayMs)
             onLowLatencyBufferChange(config.lowLatencyBuffer)
+            _state.update { it.copy(chunkLengthSchedule = config.chunkLengthSchedule) }
             onTextChange(BENCH_TEXT)
             Log.i(BenchConfig.LOG_TAG, "start $config")
 
@@ -209,7 +212,7 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         wsJob = viewModelScope.launch {
-            wsClient.stream(s.voiceId, s.modelId, tokens).collect { event ->
+            wsClient.stream(s.voiceId, s.modelId, tokens, s.chunkLengthSchedule).collect { event ->
                 val elapsed = SystemClock.elapsedRealtime() - startMs
                 when (event) {
                     TtsEvent.Connected -> log("socket open after $elapsed ms")
@@ -245,7 +248,8 @@ class DemoViewModel(application: Application) : AndroidViewModel(application) {
             if (!s.isRunning) return@update s
             val variant = when (s.mode) {
                 StreamMode.Http -> if (s.lowLatencyBuffer) "250 ms buffer" else "default buffer"
-                StreamMode.WebSocket -> "${s.tokenDelayMs} ms/word"
+                StreamMode.WebSocket -> "${s.tokenDelayMs} ms/word" +
+                    s.chunkLengthSchedule?.let { " · schedule ${it.joinToString(" ", "[", "]")}" }.orEmpty()
             }
             val result = RunResult(
                 s.mode, variant, s.modelId, s.firstByteMs, s.firstAudioMs, s.text.length,

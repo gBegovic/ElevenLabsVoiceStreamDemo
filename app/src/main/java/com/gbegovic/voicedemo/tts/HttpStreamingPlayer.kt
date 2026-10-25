@@ -51,7 +51,7 @@ class HttpStreamingPlayer(
             /* handleAudioFocus = */ true,
         )
         .apply {
-            // ExoPlayer's defaults wait for ~2.5 s of media before starting playback, which
+            // ExoPlayer's defaults wait for ~1 s of media before starting playback, which
             // suits video files but delays speech that is being generated on the fly.
             // The low-latency variant starts after 250 ms of buffered audio.
             if (lowLatencyBuffer) {

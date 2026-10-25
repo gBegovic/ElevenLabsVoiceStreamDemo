@@ -139,7 +139,7 @@ fun DemoScreen(
                         Text("Low-latency buffer", style = MaterialTheme.typography.labelLarge)
                         Text(
                             if (state.lowLatencyBuffer) "Start after 250 ms of audio"
-                            else "ExoPlayer default (~2.5 s)",
+                            else "ExoPlayer default (~1 s)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

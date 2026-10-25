@@ -2,7 +2,7 @@
 # Runs the TTFA benchmark matrix on the connected device and writes bench/results.csv.
 # Needs a debug build installed (./gradlew installDebug) with ELEVENLABS_API_KEY in local.properties.
 #
-#   ADB=/path/to/adb bench/run_matrix.sh            # all four setups
+#   ADB=/path/to/adb bench/run_matrix.sh            # all five setups
 #   ADB=/path/to/adb bench/run_matrix.sh ws-40      # only the named setups (appends to results.csv)
 #
 # Stops at the first setup whose batch aborts (e.g. 401 or quota exceeded); it never retries.
@@ -20,8 +20,9 @@ declare -A SETUPS=(
   [http-lowlatency]="--es mode http --ez lowLatency true"
   [ws-0]="--es mode ws --ei tokenDelayMs 0"
   [ws-40]="--es mode ws --ei tokenDelayMs 40"
+  [ws-40-chunk50]="--es mode ws --ei tokenDelayMs 40 --eia chunkSchedule 50"
 )
-ORDER=(http-default http-lowlatency ws-0 ws-40)
+ORDER=(http-default http-lowlatency ws-0 ws-40 ws-40-chunk50)
 [ $# -gt 0 ] && ORDER=("$@")
 
 [ -f "$OUT" ] || echo "$HEADER" > "$OUT"
