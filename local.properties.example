@@ -1,0 +1,4 @@
+# Copy to local.properties (Android Studio also adds sdk.dir there).
+ELEVENLABS_API_KEY=your_api_key_here
+# Optional: any voice ID from your ElevenLabs voice library
+ELEVENLABS_VOICE_ID=Xb7hH8MSUJpSbSDYk0k2

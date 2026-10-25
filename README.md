@@ -1,0 +1,40 @@
+# Voice Stream Demo
+
+A small Android app (Kotlin, Jetpack Compose, Media3) that streams ElevenLabs text-to-speech two ways and measures **time to first audio** for each.
+
+| Mode | How it works | Fits |
+|---|---|---|
+| **HTTP + Media3** | POSTs the full text to `/v1/text-to-speech/{voice_id}/stream` and plays the MP3 progressively in ExoPlayer. A `ResolvingDataSource` rewrites ExoPlayer's GET into an authenticated POST. | Long-form reading where the full text is known up front (Reader-style) |
+| **WebSocket + PCM** | Opens `/stream-input`, sends text word by word with a configurable delay to imitate an LLM, and writes the returned 16 kHz PCM straight into an `AudioTrack`. | Conversational agents where the answer is still being generated |
+
+## Setup
+
+1. Open the folder in Android Studio and let it sync.
+2. Copy `local.properties.example` to `local.properties` (or add to the one Android Studio creates):
+   ```
+   ELEVENLABS_API_KEY=your_api_key_here
+   ELEVENLABS_VOICE_ID=Xb7hH8MSUJpSbSDYk0k2   # optional
+   ```
+3. Run on a device (min SDK 26). Voice ID and model ID can also be changed in the app.
+
+Default model is `eleven_flash_v2_5`. The WebSocket endpoint doesn't support v3/v4 models; the HTTP path accepts any model ID you type in.
+
+## Code map
+
+- `tts/HttpStreamingPlayer.kt` – Media3 path, POST via `ResolvingDataSource`, first-byte timing via `TransferListener`
+- `tts/WebSocketTtsClient.kt` – OkHttp WebSocket wrapped in a `callbackFlow`
+- `audio/PcmStreamPlayer.kt` – `AudioTrack` in stream mode, keeps 16-bit samples aligned across chunks
+- `ui/DemoViewModel.kt` – runs both modes, records first byte / first audio, keeps recent runs
+- `ui/DemoScreen.kt` – Compose UI
+
+## Deliberate demo shortcuts
+
+- **API key in BuildConfig.** Fine for a local demo, not for a shipped app. In production the app would ask its own backend for a short-lived token, like the ElevenLabs Agents SDK does with conversation tokens.
+- **No caching on the HTTP path.** If ExoPlayer retries, it re-POSTs and regenerates (and re-bills) the audio. Production would put a `CacheDataSource` in front so retries and seeks hit the cache.
+- **No background playback.** A real reader would wrap the player in a `MediaSessionService` for notification controls, lock screen and audio focus handling.
+
+## Ideas for next steps
+
+- Use the `alignment` timestamps from the WebSocket to highlight words as they're spoken
+- Add the official ElevenLabs Agents SDK (`io.elevenlabs:elevenlabs-android`) as a third tab with a client tool
+- Move playback into a `MediaSessionService`
